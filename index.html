@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Class Scores</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
+        .button { margin: 5px; padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        .hidden { display: none; }
+        canvas { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <!-- Page 1: Score Graph -->
+    <div id="page1">
+        <h1>Class Scores</h1>
+        <canvas id="scoreChart" width="400" height="200"></canvas>
+        <br>
+        <button class="button" onclick="goToPage(2)">Go to Page 2</button>
+    </div>
+
+    <!-- Page 2: Update Scores -->
+    <div id="page2" class="hidden">
+        <h1>Update Scores</h1>
+        <div id="buttons"></div>
+        <br>
+        <button class="button" onclick="goToPage(1)">Go to Page 1</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Initial data
+        const classes = ["Class 1", "Class 2", "Class 3", "Class 4", "Class 5", "Class 6"];
+        let scores = JSON.parse(localStorage.getItem('scores')) || [10, 15, 20, 25, 30, 35];
+
+        // Elements
+        const page1 = document.getElementById('page1');
+        const page2 = document.getElementById('page2');
+        const scoreChartCanvas = document.getElementById('scoreChart');
+        const buttonsContainer = document.getElementById('buttons');
+
+        // Create buttons for updating scores
+        function createButtons() {
+            buttonsContainer.innerHTML = '';
+            classes.forEach((className, classIndex) => {
+                for (let increment = 1; increment <= 4; increment++) {
+                    const button = document.createElement('button');
+                    button.textContent = `${className} +${increment}`;
+                    button.className = 'button';
+                    button.onclick = () => updateScore(classIndex, increment);
+                    buttonsContainer.appendChild(button);
+                }
+            });
+        }
+
+        // Switch pages
+        function goToPage(pageNumber) {
+            if (pageNumber === 1) {
+                page1.classList.remove('hidden');
+                page2.classList.add('hidden');
+                renderChart();
+            } else {
+                page1.classList.add('hidden');
+                page2.classList.remove('hidden');
+                createButtons();
+            }
+        }
+
+        // Update score and save to local storage
+        function updateScore(classIndex, increment) {
+            scores[classIndex] += increment;
+            localStorage.setItem('scores', JSON.stringify(scores));
+        }
+
+        let chartInstance; // Store the chart instance globally
+let refreshInterval; // Store the interval ID for refreshing the chart
+
+// Render bar chart
+function renderChart() {
+    if (chartInstance) {
+        chartInstance.destroy(); // Destroy the previous chart instance
+    }
+    const ctx = scoreChartCanvas.getContext('2d');
+    chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: classes,
+            datasets: [{
+                label: 'Scores',
+                data: scores,
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            animation: false, // Disable animation
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+// Switch pages
+function goToPage(pageNumber) {
+    if (pageNumber === 1) {
+        page1.classList.remove('hidden');
+        page2.classList.add('hidden');
+        renderChart();
+
+        // Set up interval for refreshing the chart
+        if (!refreshInterval) {
+            refreshInterval = setInterval(renderChart, 5000); // Refresh every 5 seconds
+        }
+    } else {
+        page1.classList.add('hidden');
+        page2.classList.remove('hidden');
+
+        // Clear interval to stop refreshing the chart when not on page 1
+        if (refreshInterval) {
+            clearInterval(refreshInterval);
+            refreshInterval = null;
+        }
+        createButtons();
+    }
+}
+
+// Initialize
+goToPage(1);
+    </script>
+</body>
+</html>
