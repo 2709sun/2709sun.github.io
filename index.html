@@ -9,7 +9,21 @@
         .button { margin: 5px; padding: 10px 20px; font-size: 16px; cursor: pointer; }
         .hidden { display: none; }
         canvas { margin-top: 20px; }
+        .button-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            justify-content: center;
+            max-width: 600px;
+            margin: 0 auto;
+        }
     </style>
+    <!-- Firebase App (the core Firebase SDK) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <!-- Firebase Realtime Database -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <!-- Page 1: Score Graph -->
@@ -23,25 +37,37 @@
     <!-- Page 2: Update Scores -->
     <div id="page2" class="hidden">
         <h1>Update Scores</h1>
-        <div id="buttons"></div>
+        <div id="buttons" class="button-container"></div>
         <br>
         <button class="button" onclick="goToPage(1)">Go to Page 1</button>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyCfejQwS0bLZt0br0zjGbLbWFKTdST9Dpo",
+            authDomain: "togetherworthy.firebaseapp.com",
+            databaseURL: "https://togetherworthy-default-rtdb.firebaseio.com",
+            projectId: "togetherworthy",
+            storageBucket: "togetherworthy.appspot.com",
+            messagingSenderId: "287916237222",
+            appId: "1:287916237222:web:a2c7e70d2006f6d1292f67",
+            measurementId: "G-F547MQQQPL"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
         // Initial data
         const classes = ["Class 1", "Class 2", "Class 3", "Class 4", "Class 5", "Class 6"];
-        let scores = JSON.parse(localStorage.getItem('scores')) || [10, 15, 20, 25, 30, 35];
-
-        // Elements
-        const page1 = document.getElementById('page1');
-        const page2 = document.getElementById('page2');
-        const scoreChartCanvas = document.getElementById('scoreChart');
-        const buttonsContainer = document.getElementById('buttons');
+        let scores = [10, 15, 20, 25, 30, 35];
+        let chartInstance;
+        let refreshInterval;
 
         // Create buttons for updating scores
         function createButtons() {
+            const buttonsContainer = document.getElementById('buttons');
             buttonsContainer.innerHTML = '';
             classes.forEach((className, classIndex) => {
                 for (let increment = 1; increment <= 4; increment++) {
@@ -54,83 +80,87 @@
             });
         }
 
+        // Update score and save to Firebase
+        function updateScore(classIndex, increment) {
+            scores[classIndex] += increment;
+            saveScoresToFirebase();
+        }
+
+        // Save scores to Firebase
+        function saveScoresToFirebase() {
+            db.ref('scores').set(scores);
+        }
+
+        // Load scores from Firebase
+        function loadScoresFromFirebase() {
+            db.ref('scores').on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    scores = data;
+                    renderChart();
+                }
+            });
+        }
+
+        // Render bar chart
+        function renderChart() {
+            const scoreChartCanvas = document.getElementById('scoreChart');
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+            const ctx = scoreChartCanvas.getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: classes,
+                    datasets: [{
+                        label: 'Scores',
+                        data: scores,
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    animation: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
         // Switch pages
         function goToPage(pageNumber) {
+            const page1 = document.getElementById('page1');
+            const page2 = document.getElementById('page2');
+
             if (pageNumber === 1) {
                 page1.classList.remove('hidden');
                 page2.classList.add('hidden');
                 renderChart();
+
+                if (!refreshInterval) {
+                    refreshInterval = setInterval(renderChart, 5000);
+                }
+
+                loadScoresFromFirebase();
             } else {
                 page1.classList.add('hidden');
                 page2.classList.remove('hidden');
+
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                    refreshInterval = null;
+                }
                 createButtons();
             }
         }
 
-        // Update score and save to local storage
-        function updateScore(classIndex, increment) {
-            scores[classIndex] += increment;
-            localStorage.setItem('scores', JSON.stringify(scores));
-        }
-
-        let chartInstance; // Store the chart instance globally
-let refreshInterval; // Store the interval ID for refreshing the chart
-
-// Render bar chart
-function renderChart() {
-    if (chartInstance) {
-        chartInstance.destroy(); // Destroy the previous chart instance
-    }
-    const ctx = scoreChartCanvas.getContext('2d');
-    chartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: classes,
-            datasets: [{
-                label: 'Scores',
-                data: scores,
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            animation: false, // Disable animation
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
-            }
-        }
-    });
-}
-
-// Switch pages
-function goToPage(pageNumber) {
-    if (pageNumber === 1) {
-        page1.classList.remove('hidden');
-        page2.classList.add('hidden');
-        renderChart();
-
-        // Set up interval for refreshing the chart
-        if (!refreshInterval) {
-            refreshInterval = setInterval(renderChart, 5000); // Refresh every 5 seconds
-        }
-    } else {
-        page1.classList.add('hidden');
-        page2.classList.remove('hidden');
-
-        // Clear interval to stop refreshing the chart when not on page 1
-        if (refreshInterval) {
-            clearInterval(refreshInterval);
-            refreshInterval = null;
-        }
-        createButtons();
-    }
-}
-
-// Initialize
-goToPage(1);
+        // Initialize
+        goToPage(1);
     </script>
 </body>
 </html>
