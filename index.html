@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Class Scores</title>
+    <title>반별 점수</title>
     <style>
         body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
         .button { margin: 5px; padding: 10px 20px; font-size: 16px; cursor: pointer; }
@@ -17,6 +17,7 @@
             max-width: 600px;
             margin: 0 auto;
         }
+        .warning { color: red; font-weight: bold; margin-top: 20px; }
     </style>
     <!-- Firebase App (the core Firebase SDK) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -26,20 +27,29 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+    <!-- 학번 입력 -->
+    <div id="studentIdPage">
+        <h1>학번 입력</h1>
+        <input type="text" id="studentIdInput" placeholder="학번을 입력하세요" />
+        <br><br>
+        <button class="button" onclick="submitStudentId()">확인</button>
+    </div>
+
     <!-- Page 1: Score Graph -->
-    <div id="page1">
-        <h1>Class Scores</h1>
+    <div id="page1" class="hidden">
+        <h1>반별 점수</h1>
         <canvas id="scoreChart" width="400" height="200"></canvas>
         <br>
-        <button class="button" onclick="goToPage(2)">Go to Page 2</button>
+        <button class="button" onclick="goToPage(2)">점수 추가</button>
     </div>
 
     <!-- Page 2: Update Scores -->
     <div id="page2" class="hidden">
-        <h1>Update Scores</h1>
+        <h1>점수 추가</h1>
+        <p class="warning">점수 추가는 모두 로그에 기록되므로 남용하지 마세요</p>
         <div id="buttons" class="button-container"></div>
         <br>
-        <button class="button" onclick="goToPage(1)">Go to Page 1</button>
+        <button class="button" onclick="goToPage(1)">현황 그래프</button>
     </div>
 
     <script>
@@ -59,11 +69,26 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Initial data
-        const classes = ["Class 1", "Class 2", "Class 3", "Class 4", "Class 5", "Class 6"];
+        // 전역 변수
+        let studentId = '';
+        const classes = ["1반", "2반", "3반", "4반", "5반", "6반"];
         let scores = [10, 15, 20, 25, 30, 35];
         let chartInstance;
         let refreshInterval;
+
+        // 학번 제출
+        function submitStudentId() {
+            const input = document.getElementById('studentIdInput');
+            studentId = input.value.trim();
+
+            if (!studentId) {
+                alert("학번을 입력하세요.");
+                return;
+            }
+
+            document.getElementById('studentIdPage').classList.add('hidden');
+            goToPage(1);
+        }
 
         // Create buttons for updating scores
         function createButtons() {
@@ -72,7 +97,7 @@
             classes.forEach((className, classIndex) => {
                 for (let increment = 1; increment <= 4; increment++) {
                     const button = document.createElement('button');
-                    button.textContent = `${className} +${increment}`;
+                    button.textContent = `${className} ${increment}점`;
                     button.className = 'button';
                     button.onclick = () => updateScore(classIndex, increment);
                     buttonsContainer.appendChild(button);
@@ -80,15 +105,32 @@
             });
         }
 
-        // Update score and save to Firebase
+        // Update score and save to Firebase with logs
         function updateScore(classIndex, increment) {
+            if (!studentId) {
+                alert("학번을 입력하세요.");
+                return;
+            }
+
             scores[classIndex] += increment;
             saveScoresToFirebase();
+            saveLogToFirebase(classIndex, increment);
         }
 
         // Save scores to Firebase
         function saveScoresToFirebase() {
             db.ref('scores').set(scores);
+        }
+
+        // Save log to Firebase
+        function saveLogToFirebase(classIndex, increment) {
+            const logEntry = {
+                studentId: studentId,
+                class: classes[classIndex],
+                increment: increment,
+                timestamp: new Date().toISOString()
+            };
+            db.ref('logs').push(logEntry);
         }
 
         // Load scores from Firebase
