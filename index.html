@@ -29,8 +29,8 @@
 <body>
     <!-- 학번 입력 -->
     <div id="studentIdPage">
-        <h1>학번 입력</h1>
-        <input type="text" id="studentIdInput" placeholder="학번을 입력하세요" />
+        <h1>팀명 입력</h1>
+        <input type="text" id="studentIdInput" placeholder="팀명을 입력하세요" />
         <br><br>
         <button class="button" onclick="submitStudentId()">확인</button>
     </div>
@@ -82,7 +82,7 @@
             studentId = input.value.trim();
 
             if (!studentId) {
-                alert("학번을 입력하세요.");
+                alert("팀명을 입력하세요.");
                 return;
             }
 
@@ -108,7 +108,7 @@
         // Update score and save to Firebase with logs
         function updateScore(classIndex, increment) {
             if (!studentId) {
-                alert("학번을 입력하세요.");
+                alert("팀명을 입력하세요.");
                 return;
             }
 
